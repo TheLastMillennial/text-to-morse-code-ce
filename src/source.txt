@@ -1,0 +1,153 @@
+"V 3.47
+ClrHome
+Disp "SETTING UP...
+//gets current brightness to reset to when the program quits
+Asm(prgmGETLCD
+Ans->Z
+//D is divisor. Lets me code with easy numbers and speed up morse code transmission later
+//Max is 10 because that's the fastest the Wait command can handle
+//Default is 5 because it seems like a nice balance. Provides 4 PARIS words per second
+5->D
+//Timings pulled from https://morsecode.world/international/timing.html
+//I is dIt. All timings are based around this.
+1->I
+//H is daH which is 3 times the dit
+3*I->H
+//1 dit is the intra character separator timing (between the . and -)
+I/D->S
+//3 dits is the inter character separator timing (between each letter)
+(3*I)/D->T
+//7 times the dit is word separator timing
+(7*I)/D->W
+
+DelVar L1DelVar L3
+//36->dim(L1 useless?
+1->dim(L3
+2->dim(L6
+Fill(1,L6
+//Timings
+//0 means null, program ignores it.
+//I means dit (gets divided by D later so a dit is actually shorter than listed time)
+//2 is character separator
+//H means dah (gets divided by D later so a dah is actually shorter than listed time)
+{2,0,0,0,0,2,I,H,H,H,H,2,I,I,H,H,H,2,I,I,I,H,H,2,I,I,I,I,H,2,I,I,I,I,I,2,H,I,I,I,I,2,H,H,I,I,I,2,H,H,H,I,I,2,H,H,H,H,I,2,H,H,H,H,H,2,I,H,0,0,0,2,H,I,I,I,0,2,H,I,H,I,0,2,H,I,I,0,0,2,I,0,0,0,0,2,I,I,H,I,0,2,H,H,I,0,0,2,I,I,I,I,0,2,I,I,0,0,0,2,I,H,H,H,0,2,H,I,H,0,0,2,I,H,I,I,0,2,H,H,0,0,0,2,H,I,0,0,0,2,H,H,H,0,0,2,I,H,H,I,0,2,H,H,I,H,0,2,I,H,I,0,0,2,I,I,I,0,0,2,H,0,0,0,0,2,I,I,H,0,0,2,I,I,I,H,0,2,I,H,H,0,0,2,H,I,I,H,0,2,H,I,H,H,0,2,H,H,I,I,0,2,I->L2
+
+Menu("TEXT TO MORSE CONVERTER!","CONVERT TEXT TO MORSE",T,"LOAD MORSE",L,"QUIT",99
+
+//Convert text to morse code
+Lbl T
+ClrHome
+":->Str0
+Input "ENTER TEXT: ",Str1
+Disp "CONVERTING...
+//loop through each character in Str1
+For(A,1,length(Str1
+	//store that character in Str2
+	sub(Str1,A,1->Str2
+	//if sentance has white space or period, do something special instead.
+	If Ans!=" " and Ans!="."
+	Then
+		//get character ID of Str2
+		inString("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ",Str2->theta
+		//if character was found in the string above, get it's ID. Otherwise just ignore it.
+		If Ans
+		Then
+			//for the character ID stored in theta, store the morse equivelant (from L2) to the next entry in L3
+			For(B,6theta,6theta+5
+				L2(B->L3(1+dim(L3
+			End
+		End
+	Else
+		//if there's a space, insert the word separator
+		If Str2=" 
+		augment(L3,{W->L3
+		//replaces . with STOP
+		If Str2=".
+		augment(L3,{I,I,I,S,H,S,H,H,H,S,I,H,H,I->L3
+	End
+End
+
+".-->Str3
+//dim(L3)->dim(L3 useless?
+For(A,1,dim(L3
+	If L3(A)
+	Str0+sub(" . - ",round(L3(A)+.5,0),1->Str0
+End
+
+Goto D
+
+//Load data from string 0
+Lbl L
+Disp "LOADING Str0...
+For(A,1,length(Str0
+	sub(Str0,A,1
+	inString(". -",Ans->L3(1+dim(L3
+	If Ans=2
+	S->L3(dim(L3
+End
+
+//Offer to flash morse
+Lbl D
+ClrHome
+Disp "DONE! DATA STORed IN Str0","","FLASH MORSE?","1: YES, ONCE","2: YES, R[|e][p][|e][|a][t]","3: No, Stop"
+Input "",O
+
+//quit
+If O=3
+Goto 99
+
+//repatedly flash morse
+If O=2
+Then
+	Disp "PRESS [CLEAR] TO QUIT","STARTING IN:
+	For(A,3,1,~1
+		Output(9,14,A
+		Wait 1
+	End
+End
+
+Lbl F
+ClrHome
+//set screen to dim
+255
+Asm(prgmSETLCD
+For(A,1,dim(L3
+	L3(A)
+	//if Ans is separator or space
+	If sum(Ans={2,W
+	Then
+		//if it's a separator, ignore it. Otherwise wait.
+		If Ans!=2
+		Wait Ans
+	Else
+		//if it's not null, wait
+		If Ans
+		Then
+			//set screen to bright
+			0
+			Asm(prgmSETLCD
+			//speeds up the numbers by whatever the divisor is.
+			Wait L3(A)/D
+		End
+		
+	End
+	//set screen to dim
+	255
+	Asm(prgmSETLCD
+	//end of . or -
+	//NOTE: Converter takes care of space timing
+	Wait S
+	//if clear was pressed, quit
+	If getKey=45
+	Goto 99
+End
+Wait W
+
+If O=2
+Goto F
+
+Lbl 99
+//reset brightness
+Z
+Asm(prgmSETLCD
+Str0
