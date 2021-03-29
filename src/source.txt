@@ -17,8 +17,9 @@ Ans->Z
 I/D->S
 //3 dits is the inter character separator timing (between each letter)
 (3*I)/D->T
-//7 times the dit is word separator timing
-(7*I)/D->W
+//7 times the dit is word separator (white space) timing
+//added .01 to avoid issues with converting 
+(7*I)/D+.01->W
 
 DelVar L1DelVar L3
 //36->dim(L1 useless?
@@ -68,10 +69,10 @@ For(A,1,length(Str1
 End
 
 ".-->Str3
-//dim(L3)->dim(L3 useless?
 For(A,1,dim(L3
-	If L3(A)
-	Str0+sub(" . - ",round(L3(A)+.5,0),1->Str0
+	L3(A)
+	If Ans
+	Str0+sub(" . - ",round(Ans+(Ans=W)+.5,0),1->Str0
 End
 
 Goto D
@@ -79,24 +80,37 @@ Goto D
 //Load data from string 0
 Lbl L
 Disp "LOADING Str0...
+//take the string one char at a time
+length(Str0->L
 For(A,1,length(Str0
+	//get the character
 	sub(Str0,A,1
-	inString(". -",Ans->L3(1+dim(L3
-	If Ans=2
-	S->L3(dim(L3
+	//if the character is a space, and it's not the end of the string, and it's a double space
+	If Ans=" " and A<length(Str0) and sub(Str0,A,2)="  "
+	Then
+		//if there's a double space, then it's a word separator
+		W->L3(dim(L3
+	Else
+		//if it's not a double space
+		inString(". -",Ans->L3(1+dim(L3
+		If Ans=2
+		S->L3(dim(L3
+	End
 End
+
+
 
 //Offer to flash morse
 Lbl D
 ClrHome
-Disp "DONE! DATA STORed IN Str0","","FLASH MORSE?","1: YES, ONCE","2: YES, R[|e][p][|e][|a][t]","3: No, Stop"
+Disp "DONE! DATA STORED IN Str0","","FLASH MORSE?","1: YES, ONCE","2: YES, R[|e][p][|e][|a][t]","3: No, Stop"
 Input "",O
 
 //quit
 If O=3
 Goto 99
 
-//repatedly flash morse
+//flash morse instructions
 If O=2
 Then
 	Disp "PRESS [CLEAR] TO QUIT","STARTING IN:
@@ -106,45 +120,45 @@ Then
 	End
 End
 
+//Flash morse code
 Lbl F
 ClrHome
 //set screen to dim
-255
-Asm(prgmSETLCD
-For(A,1,dim(L3
-	L3(A)
-	//if Ans is separator or space
-	If sum(Ans={2,W
-	Then
-		//if it's a separator, ignore it. Otherwise wait.
-		If Ans!=2
-		Wait Ans
-	Else
-		//if it's not null, wait
-		If Ans
-		Then
-			//set screen to bright
-			0
-			Asm(prgmSETLCD
-			//speeds up the numbers by whatever the divisor is.
-			Wait L3(A)/D
-		End
-		
-	End
-	//set screen to dim
+Repeat O!=2
 	255
 	Asm(prgmSETLCD
-	//end of . or -
-	//NOTE: Converter takes care of space timing
-	Wait S
-	//if clear was pressed, quit
-	If getKey=45
-	Goto 99
-End
-Wait W
+	For(A,1,dim(L3
+		L3(A)
+		//if Ans is separator or space
+		If sum(Ans={2,W
+		Then
+			//if it's a separator, ignore it. Otherwise wait.
+			If Ans!=2
+			Wait Ans
+		Else
+			//if it's not null, wait
+			If Ans
+			Then
+				//set screen to bright
+				0
+				Asm(prgmSETLCD
+				//speeds up the numbers by whatever the divisor is.
+				Wait L3(A)/D
+			End
 
-If O=2
-Goto F
+		End
+		//set screen to dim
+		255
+		Asm(prgmSETLCD
+		//end of . or -
+		//NOTE: Converter takes care of space timing
+		Wait S
+		//if clear was pressed, quit
+		If getKey=45
+		Goto 99
+	End
+	Wait W
+End
 
 Lbl 99
 //reset brightness
